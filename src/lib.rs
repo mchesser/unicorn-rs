@@ -89,6 +89,11 @@ pub trait Cpu<'a> {
 
     fn emu(&self) -> &Unicorn<'a>;
 
+    /// Read a generic type from a register.
+    unsafe fn reg_read_generic<T: Sized>(&self, reg: Self::Reg) -> Result<T> {
+        self.emu().reg_read_generic(reg.to_i32())
+    }
+
     /// Read an unsigned value from a register.
     fn reg_read(&self, reg: Self::Reg) -> Result<u64> {
         self.emu().reg_read(reg.to_i32())
