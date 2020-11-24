@@ -138,6 +138,8 @@ pub enum HookType {
     MEM_READ = 1 << 10,          // Hook memory read events.
     MEM_WRITE = 1 << 11,         // Hook memory write events.
     MEM_FETCH = 1 << 12,         // Hook memory fetch for execution events
+    MEM_READ_AFTER = 1 << 13,    // Hook memory read events, but only successful access.
+    INSN_INVALID = 1 << 14,      // Hook invalid instructions exceptions.
 }
 
 #[repr(i32)]

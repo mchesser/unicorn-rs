@@ -270,6 +270,18 @@ pub trait Cpu<'a> {
             .add_insn_sys_hook(insn_type, begin, end, callback)
     }
 
+    /// Add a instruction invalid hook
+    fn add_insn_invalid_hook<F>(
+        &self,
+        callback: F,
+    ) -> Result<uc_hook>
+    where
+        F: 'a + FnMut(&'a Unicorn<'a>) -> bool,
+    {
+        self.emu().add_insn_invalid_hook(callback)
+    }
+
+
     /// Remove a hook.
     ///
     /// `hook` is the value returned by either `add_code_hook` or `add_mem_hook`.
@@ -410,6 +422,11 @@ extern "C" fn insn_sys_hook_proxy(_: uc_handle, user_data: *mut InsnSysHook<'_>)
     callback(unicorn)
 }
 
+extern "C" fn insn_invalid_hook_proxy(_: uc_handle, user_data: *mut InsnInvalidHook<'_>) -> bool {
+    let (unicorn, callback) = destructure_hook!(InsnInvalidHook, user_data);
+    callback(unicorn)
+}
+
 type CodeHook<'a> = UnicornHook<'a, Box<dyn 'a + FnMut(&'a Unicorn<'a>, u64, u32)>>;
 type IntrHook<'a> = UnicornHook<'a, Box<dyn 'a + FnMut(&'a Unicorn<'a>, u32)>>;
 type MemHook<'a> =
@@ -417,6 +434,7 @@ type MemHook<'a> =
 type InsnInHook<'a> = UnicornHook<'a, Box<dyn 'a + FnMut(&'a Unicorn<'a>, u32, usize) -> u32>>;
 type InsnOutHook<'a> = UnicornHook<'a, Box<dyn 'a + FnMut(&'a Unicorn<'a>, u32, usize, u32)>>;
 type InsnSysHook<'a> = UnicornHook<'a, Box<dyn 'a + FnMut(&'a Unicorn<'a>)>>;
+type InsnInvalidHook<'a> = UnicornHook<'a, Box<dyn 'a + FnMut(&'a Unicorn<'a>) -> bool>>;
 
 /// Internal : A Unicorn emulator instance, use one of the Cpu structs instead.
 pub struct Unicorn<'a> {
@@ -427,6 +445,7 @@ pub struct Unicorn<'a> {
     insn_in_callbacks: RefCell<HashMap<uc_hook, Box<InsnInHook<'a>>>>,
     insn_out_callbacks: RefCell<HashMap<uc_hook, Box<InsnOutHook<'a>>>>,
     insn_sys_callbacks: RefCell<HashMap<uc_hook, Box<InsnSysHook<'a>>>>,
+    insn_invalid_callbacks: RefCell<HashMap<uc_hook, Box<InsnInvalidHook<'a>>>>,
     phantom: PhantomData<&'a libc::size_t>,
 }
 
@@ -470,6 +489,7 @@ impl<'a> Unicorn<'a> {
                 insn_in_callbacks: Default::default(),
                 insn_out_callbacks: Default::default(),
                 insn_sys_callbacks: Default::default(),
+                insn_invalid_callbacks: Default::default(),
                 phantom: PhantomData,
             }))
         } else {
@@ -879,6 +899,37 @@ impl<'a> Unicorn<'a> {
 
         if err == Error::OK {
             self.insn_sys_callbacks.borrow_mut().insert(hook, user_data);
+            Ok(hook)
+        } else {
+            Err(err)
+        }
+    }
+
+    /// Add an instruction invalid hook.
+    pub fn add_insn_invalid_hook<F>(&self, callback: F) -> Result<uc_hook>
+    where
+        F: 'a + FnMut(&'a Unicorn<'a>) -> bool,
+    {
+        let mut hook: uc_hook = Default::default();
+        let mut user_data = Box::new(InsnInvalidHook {
+            unicorn: self,
+            callback: Box::new(callback),
+        });
+
+        let err = unsafe {
+            uc_hook_add(
+                self.handle,
+                &mut hook,
+                HookType::INSN_INVALID,
+                insn_invalid_hook_proxy as _,
+                user_data.as_mut() as *mut _ as _,
+                0,
+                0,
+            )
+        };
+
+        if err == Error::OK {
+            self.insn_invalid_callbacks.borrow_mut().insert(hook, user_data);
             Ok(hook)
         } else {
             Err(err)
