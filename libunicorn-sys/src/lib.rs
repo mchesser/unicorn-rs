@@ -75,6 +75,7 @@ extern "C" {
     pub fn uc_context_alloc(engine: uc_handle, context: *mut uc_context) -> Error;
     pub fn uc_context_save(engine: uc_handle, context: uc_context) -> Error;
     pub fn uc_context_restore(engine: uc_handle, context: uc_context) -> Error;
+    pub fn uc_get_invalid_addr_error(engine: uc_handle, invalid_addr: *mut u64) -> Error;
 }
 
 impl Error {

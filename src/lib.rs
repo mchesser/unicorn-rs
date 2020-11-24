@@ -302,6 +302,10 @@ pub trait Cpu<'a> {
     fn context_restore(&self, context: &Context) -> Result<()> {
         self.emu().context_restore(context)
     }
+
+    fn invalid_addr_err(&self) -> (Error, Option<u64>) {
+        self.emu().invalid_addr_err()
+    }
 }
 
 implement_emulator!(
@@ -978,6 +982,14 @@ impl<'a> Unicorn<'a> {
             Ok(())
         } else {
             Err(err)
+        }
+    }
+
+    pub fn invalid_addr_err(&self) -> (Error, Option<u64>) {
+        let mut addr: u64 = 0;
+        match unsafe { uc_get_invalid_addr_error(self.handle, &mut addr) } {
+            Error::OK => (Error::OK, None),
+            err => (err, Some(addr)),
         }
     }
 }
