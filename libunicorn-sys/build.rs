@@ -81,7 +81,7 @@ fn get_vcvars_path_and_platform() -> (OsString, &'static str) {
 }
 
 fn main() {
-    println!("cargo:rerun-if-changed=unicorn");
+    println!("cargo:rerun-if-changed=build.rs");
 
     if !build_helper::windows() {
         if Command::new("pkg-config").output().is_ok()
