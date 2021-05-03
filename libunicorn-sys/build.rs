@@ -9,7 +9,7 @@ use build_helper::rustc::{link_lib, link_search};
 
 fn get_vcvars_path_and_platform() -> (OsString, &'static str) {
     let vswhere_output = Command::new(r"build_tools\vswhere.exe")
-        .args(&["-latest", "-legacy", "-property", "installationPath"])
+        .args(&["-latest", "-products", "*", "-property", "installationPath"])
         .output()
         .expect("failed to execute vswhere.exe");
 
